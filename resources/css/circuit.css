@@ -1,0 +1,673 @@
+/**
+ * Circuit — canvas styling. (rev 17)
+ *
+ * Colours resolve through Filament's own palette variables (--primary-600 and
+ * friends), so a panel theme change carries through without touching this file.
+ * Chrome (buttons, dropdown, empty state) is rendered with Filament's own Blade
+ * components and is deliberately not styled here.
+ */
+
+.fi-circuit {
+    --fi-circuit-surface: var(--gray-50, #f9fafb);
+    --fi-circuit-border: var(--gray-200, #e5e7eb);
+    --fi-circuit-grid: var(--gray-200, #e5e7eb);
+    --fi-circuit-node-bg: #ffffff;
+    --fi-circuit-text: var(--gray-950, #030712);
+    --fi-circuit-muted: var(--gray-500, #6b7280);
+    --fi-circuit-edge: var(--gray-400, #9ca3af);
+    --fi-circuit-accent: var(--primary-600, #2563eb);
+    /* The wash over whatever is out of view on the minimap. Grey in both
+       themes rather than the panel background: laid over a light panel, the
+       background would wash the blocks out towards white instead of greying
+       them, which reads as "blank" rather than "not looking at this". */
+    --fi-circuit-scrim: color-mix(in srgb, var(--gray-500, #6b7280) 62%, transparent);
+
+    display: flex;
+    flex-direction: column;
+    /* The canvas has no intrinsic width (its children are absolute), so
+       content-sized contexts like the infolist entry grid would collapse it. */
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--fi-circuit-border);
+    border-radius: 0.75rem;
+    background-color: var(--fi-circuit-surface);
+    color: var(--fi-circuit-text);
+}
+
+:where(.dark) .fi-circuit {
+    --fi-circuit-surface: var(--gray-900, #111827);
+    --fi-circuit-border: var(--gray-700, #374151);
+    --fi-circuit-grid: var(--gray-800, #1f2937);
+    --fi-circuit-node-bg: var(--gray-800, #1f2937);
+    --fi-circuit-text: var(--gray-50, #f9fafb);
+    --fi-circuit-muted: var(--gray-400, #9ca3af);
+    --fi-circuit-edge: var(--gray-600, #4b5563);
+    --fi-circuit-scrim: color-mix(in srgb, var(--gray-950, #030712) 72%, transparent);
+}
+
+[x-cloak] {
+    display: none !important;
+}
+
+/* ── Colour variants ──────────────────────────────────────────────────────── */
+
+.fi-circuit [data-color='primary'] { --fi-circuit-accent: var(--primary-600, #2563eb); }
+.fi-circuit [data-color='success'] { --fi-circuit-accent: var(--success-600, #16a34a); }
+.fi-circuit [data-color='warning'] { --fi-circuit-accent: var(--warning-600, #d97706); }
+.fi-circuit [data-color='danger']  { --fi-circuit-accent: var(--danger-600, #dc2626); }
+.fi-circuit [data-color='info']    { --fi-circuit-accent: var(--info-600, #0284c7); }
+.fi-circuit [data-color='gray']    { --fi-circuit-accent: var(--gray-500, #6b7280); }
+
+/* ── Toolbar ──────────────────────────────────────────────────────────────── */
+
+.fi-circuit-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--fi-circuit-border);
+    background-color: var(--fi-circuit-node-bg);
+}
+
+.fi-circuit-toolbar-spacer {
+    flex: 1;
+}
+
+.fi-circuit-toolbar-status {
+    margin-inline-end: 0.25rem;
+}
+
+/* ── Palette (inside Filament's dropdown list) ────────────────────────────── */
+
+.fi-circuit-palette-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    width: 100%;
+    text-align: start;
+}
+
+.fi-circuit-palette-icon {
+    display: flex;
+    flex-shrink: 0;
+    margin-top: 0.0625rem;
+    color: var(--fi-circuit-accent);
+}
+
+.fi-circuit-palette-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.0625rem;
+    min-width: 0;
+}
+
+.fi-circuit-palette-description {
+    font-size: 0.75rem;
+    line-height: 1rem;
+    color: var(--fi-circuit-muted);
+}
+
+/* ── Surface ──────────────────────────────────────────────────────────────── */
+
+.fi-circuit-surface {
+    position: relative;
+    flex: 1;
+    overflow: hidden;
+    cursor: grab;
+    touch-action: none;
+    /* Without this, panning drags a text selection across the whole page. */
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.fi-circuit-surface-panning {
+    cursor: grabbing;
+}
+
+.fi-circuit-surface-connecting {
+    cursor: crosshair;
+}
+
+.fi-circuit-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(to right, var(--fi-circuit-grid) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--fi-circuit-grid) 1px, transparent 1px);
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.fi-circuit-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+}
+
+/* ── Edges ────────────────────────────────────────────────────────────────── */
+
+.fi-circuit-edges {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.fi-circuit-edge {
+    cursor: pointer;
+    color: var(--fi-circuit-edge);
+}
+
+.fi-circuit-edge-hit {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 14;
+    /* Hit the stroke band even though it paints transparent. */
+    pointer-events: stroke;
+}
+
+.fi-circuit-edge-line {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.75;
+}
+
+.fi-circuit-edge:hover {
+    color: var(--fi-circuit-accent);
+}
+
+.fi-circuit-edge-selected {
+    color: var(--primary-600, #2563eb);
+}
+
+.fi-circuit-edge-selected .fi-circuit-edge-line {
+    stroke-width: 2.5;
+}
+
+.fi-circuit-edge-pending {
+    fill: none;
+    stroke: var(--primary-500, #3b82f6);
+    stroke-width: 2;
+    stroke-dasharray: 5 4;
+    pointer-events: none;
+}
+
+/* ── Edge labels & the midpoint control ───────────────────────────────────── */
+
+/* Pills sit at the curve midpoint inside the transformed layer, so they scale
+   with zoom exactly like node chrome. The solid background doubles as a mask:
+   on a short edge the line passes behind the pill instead of striking through
+   the text.
+
+   The same class is worn by a <span> (nothing to configure) and a <button>
+   (the configure control), so the typography is set explicitly rather than
+   inherited — a bare <button> otherwise picks up the UA font. */
+.fi-circuit-edge-label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    max-width: 150px;
+    margin: 0;
+    padding: 0.0625rem 0.5rem;
+    border: 1px solid var(--fi-circuit-border);
+    border-radius: 9999px;
+    background-color: var(--fi-circuit-node-bg);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+    font-family: inherit;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    line-height: 1rem;
+    color: var(--fi-circuit-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    transition: color 100ms ease, border-color 100ms ease, box-shadow 100ms ease;
+}
+
+.fi-circuit-edge-label:hover {
+    border-color: var(--fi-circuit-edge);
+    color: var(--fi-circuit-text);
+}
+
+/* The pill as a real control. Full-strength text rather than the muted grey a
+   static pill uses, so it reads as something you can press before you hover
+   it, and the accent + lift on hover confirm it. */
+.fi-circuit-edge-label-action {
+    color: var(--fi-circuit-text);
+}
+
+.fi-circuit-edge-label-action:hover {
+    border-color: var(--fi-circuit-accent);
+    color: var(--fi-circuit-accent);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
+}
+
+.fi-circuit-edge-label-action:focus-visible {
+    outline: none;
+    border-color: var(--fi-circuit-accent);
+    box-shadow: 0 0 0 2px var(--fi-circuit-node-bg), 0 0 0 4px var(--primary-500, #3b82f6);
+}
+
+.fi-circuit-edge-label-selected,
+.fi-circuit-edge-label-selected:hover {
+    border-color: var(--primary-600, #2563eb);
+    color: var(--primary-600, #2563eb);
+}
+
+/* The affordance for a configurable connection that has no label to show yet.
+   Same midpoint anchor as the pill, so it scales with zoom the same way.
+   Dimmed at rest — visible enough to find without hovering, faint enough that
+   a graph full of plain connections isn't littered with buttons — and brought
+   to full strength on hover, on focus, and while its connection is selected. */
+.fi-circuit-edge-add {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.125rem;
+    height: 1.125rem;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--fi-circuit-border);
+    border-radius: 9999px;
+    background-color: var(--fi-circuit-node-bg);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+    font-family: inherit;
+    color: var(--fi-circuit-muted);
+    cursor: pointer;
+    opacity: 0.55;
+    transition: opacity 100ms ease, color 100ms ease, border-color 100ms ease;
+}
+
+.fi-circuit-edge-add-glyph {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1;
+}
+
+/* Filament's own spinner, sized to the control it replaces while the config
+   modal is being fetched.
+
+   Deliberately not named `fi-circuit-edge-pending`: that class paints the
+   drag-to-connect path, and `fill` / `stroke` / `stroke-dasharray` are
+   inherited SVG properties which beat the presentation attributes on the
+   spinner's own paths. Sharing the name drew the spinner as a dashed green
+   ring rather than a spinner. */
+.fi-circuit-edge-busy .fi-icon {
+    width: 0.75rem;
+    height: 0.75rem;
+}
+
+.fi-circuit-edge-label-action.fi-circuit-edge-busy,
+.fi-circuit-edge-add.fi-circuit-edge-busy {
+    opacity: 1;
+    cursor: default;
+}
+
+.fi-circuit-edge-add:hover,
+.fi-circuit-edge-add:focus-visible,
+.fi-circuit-edge-add-selected {
+    opacity: 1;
+    border-color: var(--fi-circuit-accent);
+    color: var(--fi-circuit-accent);
+}
+
+.fi-circuit-edge-add:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--fi-circuit-node-bg), 0 0 0 4px var(--primary-500, #3b82f6);
+}
+
+/* ── Nodes ────────────────────────────────────────────────────────────────── */
+
+.fi-circuit-node {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 220px;
+    border: 1px solid var(--fi-circuit-border);
+    border-radius: 0.625rem;
+    background-color: var(--fi-circuit-node-bg);
+    /* The type stripe is an inset shadow, not a fatter left border. As a
+       border it spent 2px the other three sides did not, which pushed the
+       padding box — and with it the handles, positioned at 50% — off the
+       card's true centre, leaving the dots sitting beside the line they
+       anchor. Painted, the stripe costs no width and the borders stay even. */
+    box-shadow: inset 3px 0 0 0 var(--fi-circuit-accent), 0 1px 2px rgb(0 0 0 / 0.06);
+    cursor: grab;
+    transition: box-shadow 100ms ease, border-color 100ms ease;
+}
+
+.fi-circuit-node:active {
+    cursor: grabbing;
+}
+
+.fi-circuit-node:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--fi-circuit-node-bg), 0 0 0 4px var(--primary-500, #3b82f6);
+}
+
+/* A problem turns the type stripe red rather than outlining the whole card:
+   the message sits inside the node already, and a full red border reads as an
+   alarm around something that is usually just unfinished. Declared before the
+   two ring states below so that selecting or dropping onto a node still shows
+   its ring — those are transient and should win. */
+.fi-circuit-node-invalid {
+    box-shadow: inset 3px 0 0 0 var(--danger-600, #dc2626), 0 1px 2px rgb(0 0 0 / 0.06);
+}
+
+/* The selection ring replaces the type stripe rather than stacking on top of
+   it — the two together read as a double edge down the left side. */
+.fi-circuit-node-selected {
+    border-color: var(--fi-circuit-accent);
+    box-shadow: 0 0 0 2px var(--fi-circuit-accent);
+}
+
+.fi-circuit-node-droppable {
+    box-shadow: 0 0 0 2px var(--success-500, #22c55e);
+}
+
+.fi-circuit-node-body {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.625rem 0.75rem;
+}
+
+.fi-circuit-node-icon {
+    display: flex;
+    flex-shrink: 0;
+    margin-top: 0.0625rem;
+    color: var(--fi-circuit-accent);
+}
+
+.fi-circuit-node-icon-svg {
+    width: 1.125rem;
+    height: 1.125rem;
+}
+
+.fi-circuit-node-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+}
+
+.fi-circuit-node-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+}
+
+.fi-circuit-node-summary {
+    font-size: 0.75rem;
+    line-height: 1rem;
+    color: var(--fi-circuit-muted);
+}
+
+/* A node type's ->infolist(), injected under the label row. Filament's own
+   entry markup is left alone apart from being scaled down to node chrome —
+   the card is 220px wide, so anything in here has to wrap. */
+.fi-circuit-node-infolist {
+    padding: 0 0.75rem 0.625rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    color: var(--fi-circuit-muted);
+    overflow-wrap: anywhere;
+}
+
+/* Filament's default schema gap is sized for a page, not a 220px card — the
+   selector carries an extra class so it outweighs .fi-sc-has-gap.fi-sc-dense. */
+.fi-circuit-node-infolist .fi-sc.fi-sc-has-gap {
+    gap: 0.5rem;
+}
+
+/* Entry labels sit tight above their value rather than carrying an infolist's
+   usual breathing room, and never outweigh the node's own label. */
+.fi-circuit-node-infolist .fi-in-entry-label,
+.fi-circuit-node-infolist .fi-in-entry-label-content {
+    font-size: 0.6875rem;
+    line-height: 1rem;
+    font-weight: 500;
+    color: var(--fi-circuit-muted);
+}
+
+.fi-circuit-node-infolist .fi-in-text,
+.fi-circuit-node-infolist .fi-in-text-item-label {
+    font-size: 0.75rem;
+    line-height: 1rem;
+    color: var(--fi-circuit-text);
+}
+
+.fi-circuit-node-error {
+    display: block;
+    padding: 0 0.75rem 0.5rem;
+    font-size: 0.6875rem;
+    line-height: 1rem;
+    color: var(--danger-600, #dc2626);
+}
+
+/* ── Node actions ─────────────────────────────────────────────────────────── */
+
+/* App-supplied actions, straddling the node's top edge so they never sit on
+   the label or summary. Inside the transformed layer, so they scale with zoom
+   like the rest of the node chrome. Revealed on hover, on focus (so keyboard
+   users can reach them), and while the node is selected — hidden with opacity
+   rather than visibility, because a visibility: hidden button cannot be
+   tabbed to and the reveal would never fire. */
+.fi-circuit-node-actions {
+    position: absolute;
+    top: -0.6875rem;
+    inset-inline-end: 0.375rem;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.375rem;
+    border: 1px solid var(--fi-circuit-border);
+    border-radius: 9999px;
+    background-color: var(--fi-circuit-node-bg);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 100ms ease;
+}
+
+.fi-circuit-node:hover > .fi-circuit-node-actions,
+.fi-circuit-node:focus-within > .fi-circuit-node-actions,
+.fi-circuit-node-selected > .fi-circuit-node-actions {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* The bar — and any dropdown hanging off it — sits inside the node's own
+   transformed box, so it is painted as part of that node: a node further down
+   the graph, later in the DOM, covers it however high the dropdown's own
+   z-index is. Raising the node itself while its bar is up is what puts an open
+   dropdown above its neighbours. */
+.fi-circuit-node:hover,
+.fi-circuit-node:focus-within,
+.fi-circuit-node-selected {
+    z-index: 2;
+}
+
+/* Filament's small icon buttons are sized for a toolbar; inside a pill this
+   narrow they read as cramped, so they get a little more room of their own. */
+.fi-circuit-node-actions .fi-icon-btn {
+    padding: 0.1875rem;
+}
+
+/* The node itself is a drag surface, so its grab cursor would otherwise be
+   inherited by the buttons sitting on top of it. */
+.fi-circuit-node-actions .fi-icon-btn,
+.fi-circuit-node-actions .fi-btn,
+.fi-circuit-node-actions .fi-link {
+    cursor: pointer;
+}
+
+/* ── Resize grip ──────────────────────────────────────────────────────────── */
+
+/* The canvas's bottom edge. Sits outside the surface so it never competes with
+   panning, and shrink-0 so dragging grows the surface rather than the bar. */
+.fi-circuit-resizer {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    height: 0.75rem;
+    border-top: 1px solid var(--fi-circuit-border);
+    background-color: var(--fi-circuit-node-bg);
+    cursor: ns-resize;
+    /* Otherwise a touch drag scrolls the page instead of resizing. */
+    touch-action: none;
+}
+
+.fi-circuit-resizer:focus-visible {
+    outline: none;
+}
+
+.fi-circuit-resizer-grip {
+    width: 2rem;
+    height: 0.1875rem;
+    border-radius: 9999px;
+    background-color: var(--fi-circuit-border);
+    transition: background-color 100ms ease;
+}
+
+.fi-circuit-resizer:hover .fi-circuit-resizer-grip,
+.fi-circuit-resizer:focus-visible .fi-circuit-resizer-grip {
+    background-color: var(--fi-circuit-accent);
+}
+
+/* ── Handles ──────────────────────────────────────────────────────────────── */
+
+.fi-circuit-handle {
+    position: absolute;
+    left: 50%;
+    width: 0.75rem;
+    height: 0.75rem;
+    border: 2px solid var(--fi-circuit-node-bg);
+    border-radius: 9999px;
+    background-color: var(--fi-circuit-accent);
+    transform: translateX(-50%);
+    transition: transform 100ms ease, box-shadow 100ms ease;
+}
+
+/* The hovered valid target while dragging a connection. */
+.fi-circuit-handle-hot {
+    transform: translateX(-50%) scale(1.5);
+    background-color: var(--success-500, #22c55e);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--success-500, #22c55e) 35%, transparent);
+}
+
+.fi-circuit-handle-target {
+    top: -0.375rem;
+}
+
+.fi-circuit-handle-source {
+    bottom: -0.375rem;
+    cursor: crosshair;
+}
+
+.fi-circuit-handle-source:hover {
+    transform: translateX(-50%) scale(1.25);
+}
+
+/* ── Horizontal flow: source on the right edge, target on the left ────────── */
+
+.fi-circuit-dir-horizontal .fi-circuit-handle {
+    left: auto;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.fi-circuit-dir-horizontal .fi-circuit-handle-target {
+    inset-inline-start: -0.375rem;
+}
+
+.fi-circuit-dir-horizontal .fi-circuit-handle-source {
+    bottom: auto;
+    inset-inline-end: -0.375rem;
+}
+
+.fi-circuit-dir-horizontal .fi-circuit-handle-source:hover {
+    transform: translateY(-50%) scale(1.25);
+}
+
+.fi-circuit-dir-horizontal .fi-circuit-handle-hot {
+    transform: translateY(-50%) scale(1.5);
+}
+
+/* ── Minimap ──────────────────────────────────────────────────────────────── */
+
+.fi-circuit-minimap {
+    position: absolute;
+    inset-inline-end: 0.75rem;
+    bottom: 0.75rem;
+    width: var(--fi-circuit-minimap-w, 160px);
+    height: var(--fi-circuit-minimap-h, 110px);
+    border: 1px solid var(--fi-circuit-border);
+    border-radius: 0.5rem;
+    background-color: color-mix(in srgb, var(--fi-circuit-node-bg) 85%, transparent);
+    overflow: hidden;
+    pointer-events: none;
+}
+
+/* Sized and placed to match the 10px margin the blocks carry, so a line ends
+   exactly at the centre of the block it points to. Explicit width and height
+   rather than `inset`: an <svg> with neither falls back to its intrinsic
+   300x150 and spills out of the frame. */
+.fi-circuit-minimap-edges {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    /* The frame less its border and the 10px inset, matching MINIMAP_CHROME. */
+    width: calc(var(--fi-circuit-minimap-w, 160px) - 22px);
+    height: calc(var(--fi-circuit-minimap-h, 110px) - 22px);
+    stroke: var(--fi-circuit-edge);
+    stroke-width: 1;
+    stroke-linecap: round;
+    opacity: 0.85;
+}
+
+.fi-circuit-minimap-node {
+    position: absolute;
+    margin: 10px;
+    border-radius: 2px;
+    background-color: var(--fi-circuit-accent);
+    opacity: 0.75;
+}
+
+/* What the viewer is looking at — marked by fading everything that is NOT.
+   The element is the clear window; the huge spread shadow is the scrim over
+   the rest, clipped by the minimap's own rounded frame. Tinting the window
+   instead would fade the very blocks the frame exists to point at.
+
+   The scrim is grey in light and near-black in dark (--fi-circuit-scrim), so
+   out-of-view blocks go grey rather than pale in either theme. When the whole
+   graph is in view the window covers the minimap and nothing is faded, which
+   is the correct signal. */
+.fi-circuit-minimap-viewport {
+    position: absolute;
+    margin: 10px;
+    border: 1px solid var(--fi-circuit-muted);
+    border-radius: 2px;
+    box-shadow: 0 0 0 9999px var(--fi-circuit-scrim);
+    pointer-events: none;
+}
+
+/* ── Empty state ──────────────────────────────────────────────────────────── */
+
+.fi-circuit-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
