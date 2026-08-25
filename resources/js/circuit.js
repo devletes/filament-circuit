@@ -1,5 +1,5 @@
 /**
- * Circuit — a node canvas for Filament. (rev 29)
+ * Circuit — a node canvas for Filament. (rev 30)
  *
  * Interaction state lives entirely in Alpine; Livewire is written to only at
  * commit points (drag end, connect, delete, config change), never during a
@@ -2284,7 +2284,8 @@ document.addEventListener('alpine:init', () => {
 
         get availableTypes() {
             return this.nodeTypes.filter(
-                (type) => !type.singleton || !this.nodes.some((node) => node.type === type.name),
+                (type) => type.addable !== false
+                    && (!type.singleton || !this.nodes.some((node) => node.type === type.name)),
             )
         },
     }))

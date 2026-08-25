@@ -118,4 +118,17 @@ class NodeTypeTest extends TestCase
         $this->assertSame(['A title is required.'], $type->validateConfig([]));
         $this->assertSame([], $type->validateConfig(['title' => 'Sign']));
     }
+
+    public function test_a_type_can_be_withdrawn_from_the_palette_without_being_unregistered(): void
+    {
+        $type = NodeType::make('draft');
+
+        $this->assertTrue($type->isAddable());
+        $this->assertTrue($type->toArray()['addable']);
+
+        $type->addable(false);
+
+        $this->assertFalse($type->isAddable());
+        $this->assertFalse($type->toArray()['addable']);
+    }
 }

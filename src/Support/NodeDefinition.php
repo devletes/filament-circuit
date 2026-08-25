@@ -64,6 +64,12 @@ abstract class NodeDefinition
     }
 
     /** At most one node of this type may exist in a graph. */
+    /** Whether the palette offers this type; a stored graph using it works either way. */
+    public function isAddable(): bool
+    {
+        return true;
+    }
+
     public function isSingleton(): bool
     {
         return false;
@@ -147,6 +153,7 @@ abstract class NodeDefinition
             ->maxIncoming($this->maxIncoming())
             ->maxOutgoing($this->maxOutgoing())
             ->singleton($this->isSingleton())
+            ->addable($this->isAddable())
             ->initial($this->isInitial())
             ->terminal($this->isTerminal())
             ->outcomes(fn (): array => $this->outcomes())

@@ -23,6 +23,8 @@ class NodeType
 
     protected bool $singleton = false;
 
+    protected bool $addable = true;
+
     protected bool $initial = false;
 
     protected bool $terminal = false;
@@ -84,6 +86,19 @@ class NodeType
     public function singleton(bool $condition = true): static
     {
         $this->singleton = $condition;
+
+        return $this;
+    }
+
+    /**
+     * Whether the palette offers this type. A type that is not addable still
+     * renders, validates and executes wherever a stored graph already uses it —
+     * this only withdraws it from the "Add node" list, which is what shipping a
+     * node type that is not ready for authors needs.
+     */
+    public function addable(bool $condition = true): static
+    {
+        $this->addable = $condition;
 
         return $this;
     }
@@ -232,6 +247,11 @@ class NodeType
         return $this->singleton;
     }
 
+    public function isAddable(): bool
+    {
+        return $this->addable;
+    }
+
     public function isInitial(): bool
     {
         return $this->initial;
@@ -345,6 +365,7 @@ class NodeType
             'color' => $this->color,
             'description' => $this->description,
             'singleton' => $this->singleton,
+            'addable' => $this->addable,
             'initial' => $this->initial,
             'terminal' => $this->terminal,
             'maxOutgoing' => $this->maxOutgoing,
