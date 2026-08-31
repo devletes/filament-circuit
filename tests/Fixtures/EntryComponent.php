@@ -19,9 +19,13 @@ class EntryComponent extends Component implements HasActions, HasSchemas
 
     public array $graph = [];
 
-    public function mount(array $graph = []): void
+    /** Both view tools off — the one combination that leaves an entry no toolbar. */
+    public bool $bare = false;
+
+    public function mount(array $graph = [], bool $bare = false): void
     {
         $this->graph = $graph;
+        $this->bare = $bare;
     }
 
     public function infolist(Schema $schema): Schema
@@ -30,6 +34,8 @@ class EntryComponent extends Component implements HasActions, HasSchemas
             CircuitEntry::make('graph')
                 ->state(fn (): array => $this->graph)
                 ->nodeTypes(CanvasComponent::registry())
+                ->zoomable(! $this->bare)
+                ->orientable(! $this->bare)
                 ->nodeActions([
                     // Both built-ins mutate the graph, so a read-only canvas
                     // must drop them rather than render buttons that cannot work.

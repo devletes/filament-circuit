@@ -6,6 +6,17 @@
     'resizable' => false,
 ])
 
+@php
+    $orientable = $config['orientable'] ?? true;
+    $zoomable = $config['zoomable'] ?? true;
+
+    // Read-only keeps the tools that only change how the graph is LOOKED at —
+    // zoom, fit and the orientation flip, whose re-layout never leaves the
+    // browser. Everything else on the bar edits, so a preview has no bar of its
+    // own unless at least one of those two is left on.
+    $showsToolbar = ! $readonly || $orientable || $zoomable;
+@endphp
+
 <div
     wire:ignore
     x-data="circuitCanvas(@js($config), @js($statePath))"
@@ -20,8 +31,9 @@
     style="height: {{ $height }}px"
     :style="`height: ${height}px`"
 >
-    @unless ($readonly)
+    @if ($showsToolbar)
         <div class="fi-circuit-toolbar">
+            @unless ($readonly)
             <x-filament::dropdown placement="bottom-start" width="xs">
                 <x-slot name="trigger">
                     <x-filament::button icon="heroicon-m-plus" size="sm">
@@ -49,16 +61,19 @@
                     </template>
                 </x-filament::dropdown.list>
             </x-filament::dropdown>
+            @endunless
 
             <div class="fi-circuit-toolbar-spacer"></div>
 
+            @unless ($readonly)
             <span class="fi-circuit-toolbar-status" x-show="errorMessages.length" x-cloak>
                 <x-filament::badge color="danger" size="sm">
                     <span x-text="`${errorMessages.length} ${errorMessages.length === 1 ? 'problem' : 'problems'}`"></span>
                 </x-filament::badge>
             </span>
+            @endunless
 
-            @if ($config['orientable'] ?? true)
+            @if ($orientable)
             {{-- Two buttons rather than one with a swapped icon: Filament
                  renders the icon server-side, so the state it shows has to be
                  a choice between two pre-rendered ones. --}}
@@ -84,7 +99,7 @@
 
             @endif
 
-            @if ($config['undoable'] ?? true)
+            @if (! $readonly && ($config['undoable'] ?? true))
             <x-filament::icon-button
                 icon="heroicon-m-arrow-uturn-left"
                 :label="__('Undo')"
@@ -106,7 +121,7 @@
             />
             @endif
 
-            @if ($config['zoomable'] ?? true)
+            @if ($zoomable)
             <x-filament::icon-button
                 icon="heroicon-m-magnifying-glass-plus"
                 :label="__('Zoom in')"
@@ -132,6 +147,7 @@
             />
             @endif
 
+            @unless ($readonly)
             @if ($config['tidyable'] ?? true)
             <x-filament::icon-button
                 icon="heroicon-m-squares-2x2"
@@ -161,8 +177,9 @@
                 x-cloak
                 x-on:click="removeSelected()"
             />
+            @endunless
         </div>
-    @endunless
+    @endif
 
     <div
         class="fi-circuit-surface"

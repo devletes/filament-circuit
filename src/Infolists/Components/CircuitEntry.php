@@ -16,6 +16,11 @@ use Filament\Infolists\Components\Entry;
  * Read-only counterpart to {@see \Devletes\Circuit\Forms\Components\CircuitCanvas}
  * for View pages: same canvas, same styling, no editing affordances.
  *
+ * It keeps the tools that change how the graph is LOOKED at rather than what it
+ * says — zoom in, zoom out, fit-to-view, and the orientation flip whose
+ * re-layout never leaves the browser. `zoomable(false)` and `orientable(false)`
+ * drop them; with both off the entry has no toolbar at all.
+ *
  * `nodeActions()` is supported here for read-only affordances — a "view
  * details" modal, a link out to whatever the node points at. Actions that
  * declare `mutatesGraph()` (both built-ins do) are dropped rather than

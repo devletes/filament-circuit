@@ -105,6 +105,33 @@ class CircuitEntryTest extends TestCase
         $this->assertStringContainsString('Jane', $bodies['a1']);
     }
 
+    public function test_the_toolbar_keeps_the_tools_that_only_change_how_the_graph_is_looked_at(): void
+    {
+        $page = Livewire::test(EntryComponent::class, ['graph' => $this->graph()]);
+
+        $page->assertSeeHtml('fi-circuit-toolbar')
+            ->assertSeeHtml('Zoom in')
+            ->assertSeeHtml('Zoom out')
+            ->assertSeeHtml('Fit to view')
+            ->assertSeeHtml('Switch to a left-to-right flow');
+
+        // Everything else on the bar edits the graph, and a read-only canvas
+        // has no commit path to run an edit through. ("Configure connection"
+        // is not checked here: it also labels the edge-midpoint control, whose
+        // x-for template is emitted either way and stays empty on an entry.)
+        $page->assertDontSeeHtml('Add node')
+            ->assertDontSeeHtml('Undo')
+            ->assertDontSeeHtml('Tidy up')
+            ->assertDontSeeHtml('Delete selection');
+    }
+
+    public function test_an_entry_with_both_view_tools_off_has_no_toolbar_at_all(): void
+    {
+        Livewire::test(EntryComponent::class, ['graph' => $this->graph(), 'bare' => true])
+            ->assertSeeHtml('fi-circuit-surface')
+            ->assertDontSeeHtml('fi-circuit-toolbar');
+    }
+
     public function test_direction_flips_the_flow_for_the_client(): void
     {
         $entry = CircuitEntry::make('graph')->nodeTypes(CanvasComponent::registry());

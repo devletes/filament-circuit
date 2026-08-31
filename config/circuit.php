@@ -26,8 +26,9 @@ return [
     |--------------------------------------------------------------------------
     |
     | 'vertical' reads top-down, 'horizontal' left-to-right. This is the
-    | starting direction; with the `orientable` tool on, an editable canvas
-    | offers a toolbar toggle for it too.
+    | starting direction; with the `orientable` tool on, a canvas offers a
+    | toolbar toggle for it too — read-only ones included, where the flip is
+    | client-side only and leaves the saved graph alone.
     |
     */
 
@@ -43,6 +44,10 @@ return [
     | ->undoable(false), and so on. Turning one off hides its toolbar button
     | AND disables the shortcut behind it, so nothing is reachable that the
     | interface does not show.
+    |
+    | A read-only entry only ever shows the two that change how the graph is
+    | looked at rather than what it says — `orientable` and `zoomable`. Turn
+    | both off there and it has no toolbar at all.
     |
     */
 

@@ -162,19 +162,15 @@ document.addEventListener('alpine:init', () => {
                 this.pushHistory()
             }
 
-            this.$nextTick(() => {
-                this.measure()
+            // A canvas born inside a modal, a collapsed section or a hidden tab
+            // measures 0×0, and fitting against that would poison the viewport
+            // with garbage — so fitView() declines, and the opening fit stays
+            // an intent rather than a single attempt: every resize gets another
+            // go until one actually lands.
+            this._fitted = false
+            this._viewportTouched = false
 
-                if (this.hasDefaultViewport()) {
-                    this.fitView()
-                }
-            })
-
-            // A canvas born inside a collapsed section or hidden tab measures
-            // 0×0, which poisons the initial fit. Re-fit the first time it
-            // actually gains size — but only while the viewport is untouched,
-            // so a user's pan/zoom is never stomped on re-expand.
-            this._hadSize = false
+            this.$nextTick(() => this.fitOnOpen())
 
             this._resizeObserver = new ResizeObserver((entries) => {
                 const rect = entries[0]?.contentRect
@@ -187,17 +183,11 @@ document.addEventListener('alpine:init', () => {
                 // rectangle is only right while this is current.
                 this.measureSurface()
 
-                if (!this._hadSize) {
-                    this._hadSize = true
-
-                    this.$nextTick(() => {
-                        this.measure()
-
-                        if (this.hasDefaultViewport()) {
-                            this.fitView()
-                        }
-                    })
+                if (this._fitted) {
+                    return
                 }
+
+                this.$nextTick(() => this.fitOnOpen())
             })
 
             this._resizeObserver.observe(this.$refs.canvas)
@@ -237,6 +227,40 @@ document.addEventListener('alpine:init', () => {
             const v = this.viewport
 
             return !v || (v.x === 0 && v.y === 0 && v.zoom === 1)
+        },
+
+        /**
+         * Whether the canvas may still centre itself on the graph.
+         *
+         * An editor only does so when no viewport was ever saved: a saved pan
+         * is the author's, and stomping it every time the field re-opens would
+         * be worse than not fitting at all. A read-only canvas has no such
+         * claim — the viewport it was handed belongs to whoever last edited the
+         * graph, laid out against a box of a different size, so a preview
+         * fits every time it opens. Either way, once the *viewer* has moved the
+         * view, nothing re-fits underneath them.
+         */
+        shouldAutoFit() {
+            if (this._viewportTouched) {
+                return false
+            }
+
+            return this.readonly || this.hasDefaultViewport()
+        },
+
+        /**
+         * Measure, then centre — the pair every "the canvas just became
+         * visible" path needs, and the one place that records whether the
+         * opening fit is finally done with.
+         *
+         * @returns {boolean} whether the canvas may stop trying to fit.
+         */
+        fitOnOpen() {
+            this.measure()
+
+            this._fitted = this.shouldAutoFit() ? this.fitView() : true
+
+            return this._fitted
         },
 
         hydrate(graph) {
@@ -376,8 +400,7 @@ document.addEventListener('alpine:init', () => {
                     // A slow response must not overwrite a newer flush's result.
                     if (problems && seq === this._flushSeq) {
                         this._syncedSignature = signature
-                        this.problems = problems.nodes ?? {}
-                        this.errorMessages = problems.messages ?? []
+                        this.applyProblems(problems)
                         this.applyNodeActions(problems.actions)
                         this.applyNodeBodies(problems.bodies)
                     }
@@ -417,7 +440,26 @@ document.addEventListener('alpine:init', () => {
 
             if (fresh) {
                 this.hydrate(fresh)
-                this._syncedSignature = this.graphSignature()
+
+                if (detail?.problems) {
+                    // Computed by the server from the state just hydrated, so
+                    // the canvas is genuinely up to date and owes no follow-up.
+                    this._syncedSignature = this.graphSignature()
+                    this.applyProblems(detail.problems)
+                } else {
+                    /*
+                     * Nothing authoritative about validity came back, so the
+                     * errors on screen are now of unknown age. Marking the
+                     * signature synced here would strand them: flushCommit
+                     * short-circuits whenever the signature matches, so no
+                     * later edit would ever ask again. Leave it unset and go
+                     * and ask.
+                     */
+                    this._syncedSignature = null
+                    this._dirty = true
+                    this.flushCommit()
+                }
+
                 this.applyNodeActions(detail?.nodeActions)
                 this.applyNodeBodies(detail?.nodeBodies)
 
@@ -427,6 +469,24 @@ document.addEventListener('alpine:init', () => {
 
                 this.$nextTick(() => this.measure())
             }
+        },
+
+        /**
+         * Validation from the server, in the shape `refreshProblems` returns.
+         *
+         * Both paths that can resolve an error route through here: the
+         * debounced flush after a graph edit, and the reload after a config
+         * modal saves. The modal is the one that matters — picking the user an
+         * approval node was missing is precisely how it stops being invalid,
+         * and the canvas cannot know that on its own.
+         */
+        applyProblems(problems) {
+            if (!problems) {
+                return
+            }
+
+            this.problems = problems.nodes ?? {}
+            this.errorMessages = problems.messages ?? []
         },
 
         /**
@@ -1219,6 +1279,7 @@ document.addEventListener('alpine:init', () => {
             this.viewport.y = my - (my - this.viewport.y) * ratio
             this.viewport.zoom = next
             this.clampViewport()
+            this._viewportTouched = true
         },
 
         zoomBy(factor) {
@@ -1237,22 +1298,24 @@ document.addEventListener('alpine:init', () => {
             this.viewport.y = my - (my - this.viewport.y) * ratio
             this.viewport.zoom = next
             this.clampViewport()
+            this._viewportTouched = true
 
             this.commit(false)
         },
 
+        /** @returns {boolean} whether there was anything to fit, and room to fit it in. */
         fitView() {
             if (!this.nodes.length) {
-                return
+                return true
             }
 
             const rect = this.canvasRect
 
-            // A hidden canvas (collapsed section, inactive tab) measures 0×0;
-            // fitting against that poisons the viewport with garbage. Leave it
-            // default — the ResizeObserver refits on first real size.
+            // A hidden canvas (modal, collapsed section, inactive tab) measures
+            // 0×0; fitting against that poisons the viewport with garbage.
+            // Leave it default — the ResizeObserver refits on first real size.
             if (rect.width === 0 || rect.height === 0) {
-                return
+                return false
             }
 
             const bounds = this.bounds()
@@ -1274,6 +1337,8 @@ document.addEventListener('alpine:init', () => {
             }
 
             this.commit(false)
+
+            return true
         },
 
         bounds() {
@@ -1348,6 +1413,7 @@ document.addEventListener('alpine:init', () => {
                 this.viewport.x = this.panning.startX + (event.clientX - this.panning.originX)
                 this.viewport.y = this.panning.startY + (event.clientY - this.panning.originY)
                 this.clampViewport()
+                this._viewportTouched = true
 
                 return
             }
@@ -1689,6 +1755,10 @@ document.addEventListener('alpine:init', () => {
          * would leave and re-enter across the cards. That does move nodes —
          * it is one undo away.
          *
+         * Offered on a read-only canvas too: the re-layout happens entirely
+         * client-side (commit() is a no-op there), so flipping a preview is
+         * looking at the same graph another way round, not editing it.
+         *
          * Deliberately NOT remembered across reloads, unlike the height. The
          * direction is only coherent alongside positions laid out for it, and
          * those live in the saved graph — a remembered direction meeting the
@@ -1696,7 +1766,7 @@ document.addEventListener('alpine:init', () => {
          * than either default.
          */
         toggleDirection() {
-            if (this.readonly || !this.orientable) {
+            if (!this.orientable) {
                 return
             }
 
