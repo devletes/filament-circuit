@@ -1,6 +1,8 @@
 /vendor/
 /node_modules/
 composer.lock
+package-lock.json
+/workbench/storage/
 .phpunit.result.cache
 .phpunit.cache
 .DS_Store

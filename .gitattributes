@@ -6,4 +6,9 @@
 /.gitignore       export-ignore
 /.github          export-ignore
 /tests            export-ignore
+/workbench        export-ignore
+/scripts          export-ignore
+/docs             export-ignore
 /phpunit.xml      export-ignore
+/testbench.yaml   export-ignore
+/package.json     export-ignore

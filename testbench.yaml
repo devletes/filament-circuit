@@ -1,0 +1,52 @@
+laravel: '@testbench'
+
+providers:
+  - BladeUI\Icons\BladeIconsServiceProvider
+  - BladeUI\Heroicons\BladeHeroiconsServiceProvider
+  - Filament\Support\SupportServiceProvider
+  - Filament\Actions\ActionsServiceProvider
+  - Filament\Schemas\SchemasServiceProvider
+  - Filament\Forms\FormsServiceProvider
+  - Filament\Infolists\InfolistsServiceProvider
+  - Filament\Tables\TablesServiceProvider
+  - Filament\Notifications\NotificationsServiceProvider
+  - Filament\Widgets\WidgetsServiceProvider
+  - Filament\FilamentServiceProvider
+  # Filament rebinds Livewire's DataStore with a plain bind(), so Livewire has
+  # to register afterwards for its instance() binding to win.
+  - Livewire\LivewireServiceProvider
+  - Devletes\Circuit\CircuitServiceProvider
+  - Workbench\App\Providers\WorkbenchServiceProvider
+  - Workbench\App\Providers\Filament\AdminPanelProvider
+
+migrations:
+  - workbench/database/migrations
+
+seeders:
+  - Workbench\Database\Seeders\DatabaseSeeder
+
+workbench:
+  start: '/admin'
+  user: aria@example.com
+  install: true
+  health: false
+  discovers:
+    web: true
+    api: false
+    commands: true
+    components: false
+    factories: false
+    views: false
+  build:
+    - asset-publish
+    - create-sqlite-db
+    - db-wipe
+    - migrate-fresh
+    - db-seed:
+        --class: 'Workbench\Database\Seeders\DatabaseSeeder'
+  assets:
+    - laravel-assets
+  sync:
+    - from: storage
+      to: workbench/storage
+      reverse: true
