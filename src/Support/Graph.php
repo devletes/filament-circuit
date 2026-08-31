@@ -181,6 +181,10 @@ class Graph
     {
         $problems = [];
 
+        // Anything blamed on a node passes a `detail` as well: the card already
+        // shows the node's label, so a message that opens with it reads as
+        // "Approval / Approval has no outgoing connection." Graph-wide problems
+        // name no node and need only the one form.
         $add = static function (?string $node, string $message, ?string $detail = null) use (&$problems): void {
             $problems[] = ['node' => $node, 'message' => $message, 'detail' => $detail ?? $message];
         };
@@ -252,7 +256,7 @@ class Graph
             if ($type->isSingleton() && count($found) > 1) {
                 // Blame every duplicate but the first, so the original stays clean.
                 foreach (array_slice($found, 1) as $duplicate) {
-                    $add($duplicate['id'], "Only one {$type->getLabel()} node is allowed.");
+                    $add($duplicate['id'], "Only one {$type->getLabel()} node is allowed.", 'Only one node of this type is allowed.');
                 }
             }
         }
@@ -268,7 +272,7 @@ class Graph
             foreach ($orphans as $orphan) {
                 $type = $nodeTypes[$byId[$orphan]['type'] ?? ''] ?? null;
                 $label = $type?->getLabel() ?? 'A node';
-                $add($orphan, "{$label} is not connected to the flow.");
+                $add($orphan, "{$label} is not connected to the flow.", 'Node is not connected to the flow.');
             }
         }
 
@@ -285,15 +289,15 @@ class Graph
             $in = count(array_filter($this->edges, fn (array $e): bool => ($e['target'] ?? null) === $node['id']));
 
             if ($type->getMaxOutgoing() !== null && $out > $type->getMaxOutgoing()) {
-                $add($node['id'], "{$type->getLabel()} allows at most {$type->getMaxOutgoing()} outgoing connection(s).");
+                $add($node['id'], "{$type->getLabel()} allows at most {$type->getMaxOutgoing()} outgoing connection(s).", "Node allows at most {$type->getMaxOutgoing()} outgoing connection(s).");
             }
 
             if ($type->getMaxIncoming() !== null && $in > $type->getMaxIncoming()) {
-                $add($node['id'], "{$type->getLabel()} allows at most {$type->getMaxIncoming()} incoming connection(s).");
+                $add($node['id'], "{$type->getLabel()} allows at most {$type->getMaxIncoming()} incoming connection(s).", "Node allows at most {$type->getMaxIncoming()} incoming connection(s).");
             }
 
             if (! $type->isTerminal() && $out === 0) {
-                $add($node['id'], "{$type->getLabel()} has no outgoing connection.");
+                $add($node['id'], "{$type->getLabel()} has no outgoing connection.", 'Node has no outgoing connection.');
             }
         }
 
@@ -319,13 +323,13 @@ class Graph
             }
 
             if (! array_key_exists($outcome, $type->getOutcomes())) {
-                $add($source, "{$type->getLabel()} has a connection bound to an unknown outcome [{$outcome}].");
+                $add($source, "{$type->getLabel()} has a connection bound to an unknown outcome [{$outcome}].", "Node has a connection bound to an unknown outcome [{$outcome}].");
 
                 continue;
             }
 
             if (isset($claimed[$source][$outcome])) {
-                $add($source, "{$type->getLabel()} has more than one connection for its {$type->getOutcomeLabel($outcome)} outcome.");
+                $add($source, "{$type->getLabel()} has more than one connection for its {$type->getOutcomeLabel($outcome)} outcome.", "Node has more than one connection for its {$type->getOutcomeLabel($outcome)} outcome.");
             }
 
             $claimed[$source][$outcome] = true;

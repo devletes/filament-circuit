@@ -112,17 +112,46 @@ class GraphTest extends TestCase
         $this->assertSame(['start2'], $blamed);
     }
 
-    public function test_a_structural_problem_reads_the_same_in_both_places(): void
+    public function test_a_structural_problem_drops_the_node_label_for_the_card(): void
     {
-        // Those name the node in a sentence rather than as a prefix, so there
-        // is nothing to strip for the card.
+        // A list of problems has to say which node it means; the card is
+        // already sitting under that node's heading, so saying it again there
+        // just reads the heading back.
         $graph = $this->graph();
         $graph['edges'] = [['id' => 'e1', 'source' => 'start', 'target' => 'a1']];
 
         $problem = collect(Graph::fromArray($graph)->problems($this->types()))
             ->firstWhere('message', 'Approval has no outgoing connection.');
 
-        $this->assertSame($problem['message'], $problem['detail']);
+        $this->assertSame('Node has no outgoing connection.', $problem['detail']);
+    }
+
+    public function test_no_problem_blamed_on_a_node_repeats_its_label_on_the_card(): void
+    {
+        // Guards the rule for rules added later, rather than the one message
+        // that prompted it: a second Start trips the singleton check, and a
+        // stray unconfigured Approval trips orphan, dead-end and config at
+        // once.
+        $graph = $this->graph();
+        $graph['nodes'][] = ['id' => 'start2', 'type' => 'start', 'position' => ['x' => 200, 'y' => 0], 'config' => []];
+        $graph['nodes'][] = ['id' => 'stray', 'type' => 'approval', 'position' => ['x' => 400, 'y' => 0], 'config' => []];
+
+        $labels = ['start' => 'Start', 'start2' => 'Start', 'a1' => 'Approval', 'stray' => 'Approval', 'end' => 'End'];
+
+        $blamed = array_filter(
+            Graph::fromArray($graph)->problems($this->types()),
+            fn (array $problem): bool => $problem['node'] !== null,
+        );
+
+        $this->assertNotEmpty($blamed);
+
+        foreach ($blamed as $problem) {
+            $this->assertStringNotContainsString(
+                $labels[$problem['node']],
+                $problem['detail'],
+                "Card text for [{$problem['node']}] repeats the node's own label: {$problem['detail']}",
+            );
+        }
     }
 
     public function test_it_reports_cycles_orphans_and_dead_ends(): void

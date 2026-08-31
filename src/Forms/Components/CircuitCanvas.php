@@ -131,11 +131,15 @@ class CircuitCanvas extends Field
                 $component->writeNodeConfig($arguments['nodeId'] ?? null, $data);
 
                 // The canvas is wire:ignore'd, so it has to be told to re-read.
-                // Node actions ride along: a label or a visible() can depend on
-                // the config that just changed.
+                // Problems ride along because this is the request that fixed
+                // them: filling in a required field is exactly how a node stops
+                // being invalid, and the canvas has no way to work that out for
+                // itself. Node actions too — a label or a visible() can depend
+                // on the config that just changed.
                 $livewire->dispatch(
                     'circuit-reload',
                     statePath: $component->getStatePath(),
+                    problems: $component->getProblems(),
                     nodeActions: $component->getNodeActionsHtml(),
                     nodeBodies: $component->getNodeBodiesHtml(),
                 );
@@ -177,7 +181,13 @@ class CircuitCanvas extends Field
                 $component->writeEdgeConfig($arguments['edgeId'] ?? null, $data);
 
                 // The canvas is wire:ignore'd, so it has to be told to re-read.
-                $livewire->dispatch('circuit-reload', statePath: $component->getStatePath());
+                // Problems ride along for the same reason they do on a node:
+                // setting an outcome can be what resolves a branch's error.
+                $livewire->dispatch(
+                    'circuit-reload',
+                    statePath: $component->getStatePath(),
+                    problems: $component->getProblems(),
+                );
             });
     }
 
