@@ -156,7 +156,14 @@ class NodeType
      * Filament schema components used to edit this node's `config`. Accepts a
      * closure so options can be resolved lazily (per tenant, per request).
      *
-     * @param  array|Closure(): array  $schema
+     * While a node is being edited the canvas evaluates the closure with
+     * Filament's injections — `Get $get` for the form the canvas sits in,
+     * `$livewire`, `$record` — plus `$node`, `$nodeId`, `$nodeType`,
+     * `$outgoing` and `$incoming`, so a schema can depend on where it is
+     * edited. It is also called bare, to learn whether the type has anything
+     * to configure at all, so every parameter has to be optional.
+     *
+     * @param  array|Closure  $schema
      */
     public function schema(array|Closure $schema): static
     {
@@ -290,11 +297,22 @@ class NodeType
         return $this->getOutcomes()[$outcome] ?? null;
     }
 
+    /**
+     * The fields, evaluated with nothing — enough to know whether there are
+     * any. {@see \Devletes\Circuit\Forms\Components\CircuitCanvas::getNodeTypeSchemaFor()}
+     * is the contextual form.
+     */
     public function getSchema(): array
     {
         return $this->schema instanceof Closure
             ? ($this->schema)()
             : $this->schema;
+    }
+
+    /** The schema as declared, for the canvas to evaluate with its own injections. */
+    public function getRawSchema(): array|Closure
+    {
+        return $this->schema;
     }
 
     public function summarise(array $config): ?string

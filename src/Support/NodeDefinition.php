@@ -107,7 +107,12 @@ abstract class NodeDefinition
 
     /**
      * Filament schema components used to edit this node's `config`.
-     * Evaluated lazily, per render.
+     * Evaluated lazily, per render. An override may declare parameters and
+     * have the canvas fill them in while a node is edited — `?Get $get = null`
+     * for the form the canvas sits in, `?string $nodeId = null`,
+     * `array $outgoing = []`, and the rest of what {@see NodeType::schema()}
+     * lists. Optional, every one: the type is also asked bare whether it has
+     * anything to configure.
      */
     public function schema(): array
     {
@@ -157,7 +162,9 @@ abstract class NodeDefinition
             ->initial($this->isInitial())
             ->terminal($this->isTerminal())
             ->outcomes(fn (): array => $this->outcomes())
-            ->schema(fn (): array => $this->schema())
+            // The method itself, signature and all, so an override's parameters
+            // are there for the canvas to fill in.
+            ->schema($this->schema(...))
             ->summariseUsing(fn (array $config): ?string => $this->summarise($config))
             ->validateConfigUsing(fn (array $config): array => $this->validateConfig($config));
 

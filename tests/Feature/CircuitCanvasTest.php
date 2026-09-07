@@ -7,6 +7,7 @@ use Devletes\Circuit\Support\Graph;
 use Devletes\Circuit\Tests\Fixtures\CanvasComponent;
 use Devletes\Circuit\Tests\TestCase;
 use Filament\Actions\Testing\TestAction;
+use Filament\Forms\Components\TextInput;
 use Livewire\Livewire;
 
 /**
@@ -75,6 +76,24 @@ class CircuitCanvasTest extends TestCase
             ->set('data.graph', $graph)
             ->assertSet('updates', 1)
             ->assertSet('data.graph.nodes.0.position.x', 32);
+    }
+
+    /** A type's schema can depend on where it is edited: the canvas fills in whatever parameters it declares. */
+    public function test_a_node_schema_is_evaluated_with_the_node_it_is_edited_on(): void
+    {
+        $page = Livewire::test(CanvasComponent::class, ['graph' => $this->graph()]);
+
+        $fields = $this->canvas($page)->getNodeTypeSchemaFor('a1');
+
+        $this->assertSame('Node a1, 1 out', $fields[1]->getPlaceholder());
+
+        // Reaching the modal the same way.
+        $page->mountAction(TestAction::make('editNode')->arguments(['nodeId' => 'a1'])->schemaComponent('graph'))
+            ->assertSchemaComponentExists('escalate_after', null, fn (TextInput $input): bool => $input->getPlaceholder() === 'Node a1, 1 out');
+
+        // Asked bare — is there anything to configure? — the parameters fall to their defaults.
+        $this->assertNull(CanvasComponent::registry()->get('approval')->toNodeType()->getSchema()[1]->getPlaceholder());
+        $this->assertSame([], $this->canvas($page)->getNodeTypeSchemaFor('no-such-node'));
     }
 
     public function test_the_config_action_writes_config_and_summary_back(): void

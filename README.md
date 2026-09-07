@@ -199,6 +199,21 @@ Double-clicking a node (or pressing <kbd>Enter</kbd> on it) mounts a built-in Fi
 <td width="50%"><img src="docs/images/node-config-dark.png" alt="Node config modal, dark mode"></td>
 </tr></table>
 
+A schema can depend on where it is being edited. Declare parameters on `schema()` and the canvas fills them in: `?Get $get = null` for the form the canvas sits in, `?string $nodeId = null`, `array $outgoing = []`, `array $incoming = []`, `?array $node = null`, `?NodeType $nodeType = null`, and Filament's `$livewire` / `$record`. Keep them optional — the type is also asked bare whether it has anything to configure.
+
+```php
+use Filament\Forms\Components\Select;
+use Filament\Schemas\Components\Utilities\Get;
+
+public function schema(?Get $get = null): array
+{
+    // Something the surrounding form already answered — say, what the flow runs for.
+    $runsFor = $get ? $get('subject') : null;
+
+    return [Select::make('approver')->options(ApproverOptions::for($runsFor))];
+}
+```
+
 Prefer a slide-over? Opt in per canvas — the same switch exists for edge config:
 
 ```php
@@ -213,6 +228,17 @@ CircuitCanvas::make('graph')
 <td width="50%"><img src="docs/images/node-config-slideover-light.png" alt="Node config slide-over, light mode"></td>
 <td width="50%"><img src="docs/images/node-config-slideover-dark.png" alt="Node config slide-over, dark mode"></td>
 </tr></table>
+
+Already inside a modal — a canvas in an action's form, say? The config dialog opens **on top** of it rather than closing it first, so the node being edited stays in view. That is Filament's `overlayParentActions()`, on by default here. For anything else about the two built-in actions, each takes a closure the way a Repeater's `deleteAction()` does:
+
+```php
+use Filament\Actions\Action;
+use Filament\Support\Enums\Width;
+
+CircuitCanvas::make('graph')
+    ->editNodeAction(fn (Action $action): Action => $action->modalHeading('Step')->overlayParentActions(false))
+    ->editEdgeAction(fn (Action $action): Action => $action->modalWidth(Width::Large))
+```
 
 Outside a Filament schema (a bare Alpine mount), the canvas falls back to browser events: `circuit-node-edit` fires with `{ id, type, config }`, and you write back with `$dispatch('circuit-update-node', { id, config })`. `circuit-node-selected` fires on every selection change in both modes.
 

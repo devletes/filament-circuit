@@ -58,6 +58,10 @@ class CircuitCanvas extends Field
 
     protected Width|string|Closure|null $edgeConfigModalWidth = null;
 
+    protected ?Closure $modifyEditNodeActionUsing = null;
+
+    protected ?Closure $modifyEditEdgeActionUsing = null;
+
     protected ?Closure $edgeSchema = null;
 
     protected ?Closure $nodeSchemaSuffix = null;
@@ -105,11 +109,12 @@ class CircuitCanvas extends Field
      * Mounted from the canvas by node id. Renders that node type's own schema
      * in a modal, so node config is edited with real Filament components and
      * real validation rather than a bespoke form. Opt into a slide-over with
-     * {@see nodeConfigInSlideOver()}.
+     * {@see nodeConfigInSlideOver()}, and into anything else through
+     * {@see editNodeAction()}.
      */
     public function getEditNodeAction(): Action
     {
-        return Action::make('editNode')
+        $action = Action::make('editNode')
             ->label(__('Configure node'))
             ->slideOver(fn (CircuitCanvas $component): bool => $component->shouldOpenNodeConfigInSlideOver())
             ->modalWidth(fn (CircuitCanvas $component): Width|string|null => $component->getNodeConfigModalWidth())
@@ -144,17 +149,20 @@ class CircuitCanvas extends Field
                     nodeBodies: $component->getNodeBodiesHtml(),
                 );
             });
+
+        return $this->configureConfigAction($action, $this->modifyEditNodeActionUsing);
     }
 
     /**
      * Mounted from the canvas by edge id. Offers an outcome Select when the
      * source node's type declares outcomes, plus whatever condition
      * components the app contributed through {@see edgeSchema()}. Modal by
-     * default; opt into a slide-over with {@see edgeConfigInSlideOver()}.
+     * default; opt into a slide-over with {@see edgeConfigInSlideOver()}, and
+     * into anything else through {@see editEdgeAction()}.
      */
     public function getEditEdgeAction(): Action
     {
-        return Action::make('editEdge')
+        $action = Action::make('editEdge')
             ->label(__('Configure connection'))
             ->slideOver(fn (CircuitCanvas $component): bool => $component->shouldOpenEdgeConfigInSlideOver())
             ->modalWidth(fn (CircuitCanvas $component): Width|string|null => $component->getEdgeConfigModalWidth())
@@ -189,6 +197,31 @@ class CircuitCanvas extends Field
                     problems: $component->getProblems(),
                 );
             });
+
+        return $this->configureConfigAction($action, $this->modifyEditEdgeActionUsing);
+    }
+
+    /**
+     * What both config dialogs share once built. They stack on top of whatever
+     * modal the canvas is already in rather than closing it first: a canvas in
+     * an action's form is the whole screen, and hiding it to edit one node
+     * takes away the very node being edited. (Filament's default is to close
+     * the parent and reopen it afterwards; on a plain page there is no parent
+     * and this changes nothing.) The app's modifier, if any, runs last, so it
+     * can undo that or change anything else about the action.
+     */
+    protected function configureConfigAction(Action $action, ?Closure $modifier): Action
+    {
+        // Early Filament 4 releases have no stacking; there the dialog behaves as it always did.
+        if (method_exists($action, 'overlayParentActions')) {
+            $action->overlayParentActions();
+        }
+
+        if ($modifier !== null) {
+            $action = $this->evaluate($modifier, ['action' => $action]) ?? $action;
+        }
+
+        return $action;
     }
 
     /**
@@ -200,7 +233,7 @@ class CircuitCanvas extends Field
      */
     public function getNodeSchemaFor(?string $id): array
     {
-        $components = $this->getNodeTypeFor($id)?->getSchema() ?? [];
+        $components = $this->getNodeTypeSchemaFor($id);
 
         $suffix = $this->getNodeSchemaSuffixFor($id);
 
@@ -209,6 +242,33 @@ class CircuitCanvas extends Field
         }
 
         return $components;
+    }
+
+    /**
+     * The type's own fields for one node, evaluated with the canvas's
+     * injections — so a schema can depend on where it is being edited: the
+     * surrounding form's state through `Get`, the record, the node itself.
+     *
+     * @return array<int, mixed>
+     */
+    public function getNodeTypeSchemaFor(?string $id): array
+    {
+        $type = $this->getNodeTypeFor($id);
+        $node = $this->getNode($id);
+
+        if (! $type || ! $node) {
+            return [];
+        }
+
+        $schema = $type->getRawSchema();
+
+        if (! $schema instanceof Closure) {
+            return $schema;
+        }
+
+        $components = $this->evaluate($schema, $this->nodeInjections($id, $node));
+
+        return is_array($components) ? array_values($components) : [];
     }
 
     /**
@@ -228,15 +288,27 @@ class CircuitCanvas extends Field
             return [];
         }
 
-        $suffix = $this->evaluate($this->nodeSchemaSuffix, [
+        $suffix = $this->evaluate($this->nodeSchemaSuffix, $this->nodeInjections($id, $node));
+
+        return is_array($suffix) ? array_values($suffix) : (blank($suffix) ? [] : [$suffix]);
+    }
+
+    /**
+     * What a node-level closure may ask for by name, on top of Filament's own
+     * injections (`Get $get`, `$livewire`, `$record`).
+     *
+     * @param  array<string, mixed>  $node
+     * @return array<string, mixed>
+     */
+    protected function nodeInjections(?string $id, array $node): array
+    {
+        return [
             'node' => $node,
             'nodeId' => $id,
             'nodeType' => $this->getNodeTypeFor($id),
             'outgoing' => $this->getOutgoingEdges($id),
             'incoming' => $this->getIncomingEdges($id),
-        ]);
-
-        return is_array($suffix) ? array_values($suffix) : (blank($suffix) ? [] : [$suffix]);
+        ];
     }
 
     /**
@@ -313,7 +385,7 @@ class CircuitCanvas extends Field
             // nothing to open; the canvas ignores the click either way, and a
             // button that does nothing is worse than no button. An app that
             // wants different rules calls ->hidden() on the returned action.
-            ->hidden(fn (CircuitCanvas $component, ?string $nodeId): bool => ($component->getNodeTypeFor($nodeId)?->getSchema() ?? []) === [])
+            ->hidden(fn (CircuitCanvas $component, ?string $nodeId): bool => $component->getNodeTypeSchemaFor($nodeId) === [])
             // Opening the modal is a round trip, but the click is an Alpine
             // handler rather than wire:click, so Filament has nothing to infer
             // a loading target from. Naming the call restores the native
@@ -367,6 +439,28 @@ class CircuitCanvas extends Field
     public function edgeConfigModalWidth(Width|string|Closure|null $width): static
     {
         $this->edgeConfigModalWidth = $width;
+
+        return $this;
+    }
+
+    /**
+     * Configure the built-in node-config action — the same way a Repeater's
+     * `deleteAction()` works. The closure receives the action and returns it,
+     * so anything a Filament action takes is reachable: a heading, a width,
+     * `slideOver()`, `overlayParentActions(false)` to close a parent modal
+     * instead of stacking over it, extra footer actions.
+     */
+    public function editNodeAction(?Closure $callback): static
+    {
+        $this->modifyEditNodeActionUsing = $callback;
+
+        return $this;
+    }
+
+    /** Configure the built-in edge-config action; see {@see editNodeAction()}. */
+    public function editEdgeAction(?Closure $callback): static
+    {
+        $this->modifyEditEdgeActionUsing = $callback;
 
         return $this;
     }

@@ -28,11 +28,14 @@ class ApprovalNode extends NodeDefinition
         return ['approved' => 'Approved', 'rejected' => 'Rejected'];
     }
 
-    public function schema(): array
+    /** Declares what the canvas may fill in, to show a schema following the node it is edited on. */
+    public function schema(?string $nodeId = null, array $outgoing = []): array
     {
         return [
             TextInput::make('approver')->required(),
-            TextInput::make('escalate_after')->numeric(),
+            TextInput::make('escalate_after')
+                ->numeric()
+                ->placeholder($nodeId ? sprintf('Node %s, %d out', $nodeId, count($outgoing)) : null),
         ];
     }
 
